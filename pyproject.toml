@@ -5,6 +5,9 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "pydantic",
+    "sqlalchemy>=2.0",
+    "asyncpg",
+    "alembic",
 ]
 
 [tool.setuptools.packages.find]

@@ -1,4 +1,4 @@
-name: CI
+name: shotr Python CI
 
 on:
   push:
