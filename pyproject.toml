@@ -7,6 +7,10 @@ dependencies = [
     "pydantic",
 ]
 
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["docker*", "tests*", "docs*"]
+
 [tool.pytest.ini_options]
 pythonpath = ["."]
 addopts = [
