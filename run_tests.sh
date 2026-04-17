@@ -12,7 +12,7 @@ cd "$PROJECT_ROOT"
 # 3. Start only  infrastructure
 docker-compose -f docker/docker-compose.yml up -d db redis --wait
 
-echo "🏗️ Running migrations..."
+echo "Running migrations..."
 alembic upgrade head
 
 echo "Database is up. Running migrations/tests..."

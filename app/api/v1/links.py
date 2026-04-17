@@ -1,11 +1,10 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schemas.link import LinkCreate, LinkResponse
-
-
 from app.api.deps import get_db
 from app.repositories.link_repo import LinkRepository
 from app.services.shortener import generate_slug
+
 
 router = APIRouter(prefix="/api/v1/links", tags=["links"])
 
@@ -16,11 +15,18 @@ async def create_link(
 ):
     repo = LinkRepository(db)
 
-    while True:
+    for _ in range(5):
         slug = generate_slug()
-        if not await repo.get_by_slug(slug):
-            break
 
-    link = await repo.create(url=str(payload.url), slug=slug)
+        try:
+            link = await repo.create(url=str(payload.url), slug=slug)
+            #return link
+            return LinkResponse(url=link.url, slug=link.slug)
+        except:
+            continue
 
-    return link
+    raise HTTPException(status_code=500, detail="Could not generate unique slug")
+
+    
+
+    

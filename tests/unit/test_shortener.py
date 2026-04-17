@@ -20,4 +20,4 @@ def test_slug_collision_handled(monkeypatch):
     slug1 = shortener.generate_slug()
     slug2 = shortener.generate_slug()
 
-    assert slug1 == slug2  # forced collision
+    assert slug1 == slug2
