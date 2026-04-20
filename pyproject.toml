@@ -8,6 +8,7 @@ dependencies = [
     "sqlalchemy>=2.0",
     "asyncpg",
     "alembic",
+    "redis>=5.0"
 ]
 
 [tool.setuptools.packages.find]
@@ -17,10 +18,12 @@ exclude = ["docker*", "tests*", "docs*"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
 pythonpath = ["."]
 addopts = [
-    "-v",
     "--cov=app",
     "--cov-report=term-missing",
+    "--cov-fail-under=90",
+    "-v",
 ]
-testpaths = ["tests"]

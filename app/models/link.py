@@ -7,4 +7,4 @@ class Link(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     url: Mapped[str] = mapped_column(String, nullable=False)
-    slug: Mapped[str] = mapped_column(String(10), unique=True, index=True)
+    slug: Mapped[str] = mapped_column(String(10), unique=True, index=True, nullable=False)

@@ -4,7 +4,7 @@ from app.schemas.link import LinkCreate, LinkResponse
 from app.api.deps import get_db
 from app.repositories.link_repo import LinkRepository
 from app.services.shortener import generate_slug
-
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/api/v1/links", tags=["links"])
 
@@ -14,19 +14,21 @@ async def create_link(
     db: AsyncSession = Depends(get_db)
 ):
     repo = LinkRepository(db)
+    MAX_RETRIES = 5
 
-    for _ in range(5):
+    for attempt in range(MAX_RETRIES):
         slug = generate_slug()
-
         try:
-            link = await repo.create(url=str(payload.url), slug=slug)
-            #return link
-            return LinkResponse(url=link.url, slug=link.slug)
-        except:
-            continue
-
-    raise HTTPException(status_code=500, detail="Could not generate unique slug")
-
-    
-
-    
+            async with db.begin_nested():
+                link = await repo.create(url=str(payload.url), slug=slug)
+            
+            await db.commit()
+            return link
+            
+        except IntegrityError:
+            if attempt == MAX_RETRIES - 1:
+                await db.rollback()
+                raise HTTPException(
+                    status_code=500,
+                    detail="Could not generate unique slug"
+                )

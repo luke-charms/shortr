@@ -11,7 +11,6 @@ async def test_create_link_persists():
         )
         assert response.status_code == 201
         data = response.json()
-        print(f"\nDEBUG API RESPONSE: {data}") # See what's actually there
         assert data["url"] == "https://example.com/"
         assert "slug" in data
 
