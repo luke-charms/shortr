@@ -27,3 +27,14 @@ addopts = [
     "--cov-fail-under=90",
     "-v",
 ]
+
+[tool.coverage.run]
+source = ["app"]
+omit = [
+    "app/services/redirect_service.py",   # legacy stub, superseded by redirects.py
+    "app/db/migrations/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
