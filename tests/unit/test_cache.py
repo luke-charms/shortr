@@ -63,3 +63,4 @@ async def test_delete_url_calls_redis_delete(mock_redis):
     await delete_url("abc1234")
 
     mock_redis.delete.assert_called_once_with("abc1234")
+

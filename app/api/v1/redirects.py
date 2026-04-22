@@ -18,9 +18,13 @@ async def redirect(slug: str, db: AsyncSession = Depends(get_db)):
     2. Fall back to PostgreSQL on cache miss
     3. Populate cache for future requests
     """
+    # ── 0. Click count db bind ─────────────────────────────────────────────
+    repo = LinkRepository(db)
+
     # ── 1. Cache hit ──────────────────────────────────────────────────────
     cached_url = await get_url(slug)
     if cached_url:
+        await repo.increment_click_count(slug)
         return RedirectResponse(url=cached_url, status_code=307)
 
     # ── 2. DB lookup ──────────────────────────────────────────────────────
@@ -29,6 +33,8 @@ async def redirect(slug: str, db: AsyncSession = Depends(get_db)):
 
     if not link:
         raise HTTPException(status_code=404, detail="Link not found")
+    
+    await repo.increment_click_count(slug)
 
     # ── 3. Populate cache so next request is a cache hit ──────────────────
     await set_url(slug, link.url)

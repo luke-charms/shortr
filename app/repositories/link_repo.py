@@ -25,3 +25,14 @@ class LinkRepository:
             select(Link).where(Link.slug == slug)
         )
         return result.scalar_one_or_none()
+    
+    async def increment_click_count(self, slug: str) -> None:
+        """Increases click count for a link in the database"""
+        result = await self.db.execute(
+            select(Link).where(Link.slug == slug)
+        )
+        link = result.scalar_one_or_none()
+
+        if link:
+            link.click_count += 1
+            await self.db.flush()
