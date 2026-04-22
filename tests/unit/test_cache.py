@@ -8,6 +8,7 @@ right arguments.
 """
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+import asyncio
 
 from app.services.cache import get_url, set_url, delete_url, DEFAULT_TTL
 
@@ -50,7 +51,6 @@ async def test_set_url_calls_redis_set_with_ttl(mock_redis):
         "abc1234", "https://example.com", ex=DEFAULT_TTL
     )
 
-
 async def test_set_url_accepts_custom_ttl(mock_redis):
     """set_url must pass through a custom TTL value."""
     await set_url("abc1234", "https://example.com", ttl=60)
@@ -64,3 +64,20 @@ async def test_delete_url_calls_redis_delete(mock_redis):
 
     mock_redis.delete.assert_called_once_with("abc1234")
 
+@pytest.mark.asyncio
+async def test_cache_ttl_expires_integration(redis_client):
+    # 1. Set a key with a 1-second expiration
+    test_slug = "test-expiry"
+    test_url = "https://example.com"
+    await set_url(test_slug, test_url, ttl=1)
+
+    # 2. Verify it exists immediately
+    val = await get_url(test_slug)
+    assert val is not None 
+
+    # 3. Wait for the TTL to pass (1.1s to be safe)
+    await asyncio.sleep(1.1)
+
+    # 4. Verify it has expired and returned None
+    val_after = await get_url(test_slug)
+    assert val_after is None

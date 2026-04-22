@@ -4,6 +4,7 @@ import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from unittest.mock import AsyncMock
+from app.core.redis import get_redis, close_redis
 
 
 from app.db.base import Base
@@ -57,6 +58,16 @@ async def client(db_session: AsyncSession):
 
     app.dependency_overrides.clear()
 
+@pytest_asyncio.fixture
+async def redis_client():
+    """
+    Returns the real Redis client connected to the test container.
+    Cleans up keys after the test to ensure isolation.
+    """
+    client = get_redis()
+    yield client
+    # Clean up the test data
+    await client.flushdb()
 
 @pytest.fixture(autouse=True)
 def mock_cache(monkeypatch):

@@ -11,6 +11,12 @@ async def get_url(slug: str) -> str | None:
     """
     return await get_redis().get(slug)
 
+    """
+    val = await get_redis().get(slug)
+    if val:
+        return val.decode("utf-8") if isinstance(val, bytes) else val
+    return None
+    """
 
 async def set_url(slug: str, url: str, ttl: int = DEFAULT_TTL) -> None:
     """

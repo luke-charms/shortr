@@ -66,3 +66,24 @@ async def test_create_link_collision_retry(client: AsyncClient, monkeypatch) -> 
     second = await client.post("/api/v1/links", json={"url": "https://second.com"})
     assert second.status_code == 201
     assert second.json()["slug"] == "unique1"
+
+async def test_cache_hit_does_not_hit_db(client, monkeypatch):
+    mock_repo = AsyncMock()
+    mock_repo.get_by_slug = AsyncMock()
+
+    monkeypatch.setattr(
+        "app.api.v1.redirects.LinkRepository",
+        lambda db: mock_repo
+    )
+
+    # force cache hit
+    monkeypatch.setattr(
+        "app.api.v1.redirects.get_url",
+        AsyncMock(return_value="https://example.com")
+    )
+
+    response = await client.get("/abc123", follow_redirects=False)
+
+    assert response.status_code == 307
+
+    mock_repo.get_by_slug.assert_not_called()

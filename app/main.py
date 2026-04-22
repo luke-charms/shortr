@@ -4,7 +4,9 @@ from fastapi import FastAPI
 from app.api.health import router as health_router
 from app.api.v1.links import router as links_router
 from app.api.v1.redirects import router as redirect_router
+from app.middleware.timing import TimingMiddleware
 from app.core.redis import close_redis
+
 
 
 @asynccontextmanager
@@ -21,6 +23,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(links_router)
     app.include_router(redirect_router)
+    app.add_middleware(TimingMiddleware)
 
     return app
 
