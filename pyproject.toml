@@ -38,3 +38,11 @@ omit = [
 [tool.coverage.report]
 show_missing = true
 skip_covered = false
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio",
+    "pytest-cov",
+    "httpx",
+]
