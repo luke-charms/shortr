@@ -13,7 +13,7 @@ async def test_redirect_expired_link_returns_410(client, db_session):
     )
 
     db_session.add(expired_link)
-    await db_session.commit()
+    await db_session.flush()   # flush within the open transaction, never commit
 
     response = await client.get("/expired123", follow_redirects=False)
 
@@ -32,11 +32,12 @@ async def test_redirect_valid_link_not_expired(client, db_session):
     )
 
     db_session.add(valid_link)
-    await db_session.commit()
+    await db_session.flush()   # flush within the open transaction, never commit
 
     response = await client.get("/valid123", follow_redirects=False)
 
     assert response.status_code == 307
+
 
 @pytest.mark.asyncio
 async def test_expired_link_not_cached(client, db_session):
@@ -52,7 +53,7 @@ async def test_expired_link_not_cached(client, db_session):
     )
 
     db_session.add(expired_link)
-    await db_session.commit()
+    await db_session.flush()   # flush within the open transaction, never commit
 
     await client.get(f"/{slug}", follow_redirects=False)
 

@@ -1,4 +1,4 @@
-name: shotr Python CI
+name: Shortr CI
 
 on:
   push:
@@ -22,35 +22,38 @@ jobs:
           --health-cmd="pg_isready -U postgres"
           --health-interval=5s
           --health-timeout=5s
-          --health-retries=5
+          --health-retries=10
 
       redis:
         image: redis:7
         ports:
           - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
 
     env:
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: shortr_test
-
-      REDIS_HOST: localhost
-      REDIS_PORT: 6379
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/shortr
+      REDIS_URL: redis://localhost:6379/0
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
 
       - name: Install dependencies
         run: |
-          pip install -e .
-          pip install pytest pytest-asyncio pytest-cov httpx
+          pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
 
       - name: Run tests
         run: pytest

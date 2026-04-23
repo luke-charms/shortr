@@ -5,12 +5,10 @@ from datetime import datetime, timezone
 
 from app.api.deps import get_db
 from app.repositories.link_repo import LinkRepository
-from app.repositories.click_repo import ClickRepository
 from app.services.cache import get_url, set_url
 from app.services.rate_limiter import is_rate_limited
 from app.core.logging import logger
 from app.services.analytics import increment_click, track_click_event
-
 
 router = APIRouter(tags=["redirects"])
 
@@ -24,64 +22,47 @@ async def redirect(
     """
     Production-grade redirect flow:
 
-    1. Rate limit (always first)
-    2. Try cache (fast path, no DB read)
-    3. Fallback to DB
-    4. Record analytics (non-blocking candidate)
-    5. Return redirect
+    1. Rate limit check (always first)
+    2. Try Redis cache (fast path — no DB read)
+    3. DB lookup on cache miss
+    4. Record analytics via Redis buffer (both paths, consistently)
+    5. Return 307 redirect
     """
-
     ip = request.client.host if request.client else "unknown"
+    user_agent = request.headers.get("user-agent")
 
-    # ── 1. Rate limiting ────────────────────────────────────────────────
+    # ── 1. Rate limiting ──────────────────────────────────────────────────
     if await is_rate_limited(ip):
         logger.warning("rate_limited", extra={"ip": ip, "slug": slug})
         raise HTTPException(status_code=429, detail="Too many requests")
 
-    repo = LinkRepository(db)
-    click_repo = ClickRepository(db)
-
-    # ── 2. Cache lookup ──────────────────────────────────────
+    # ── 2. Cache hit path ─────────────────────────────────────────────────
     cached_url = await get_url(slug)
     if cached_url:
         logger.info("cache_hit", extra={"slug": slug})
 
-        # async que click counter increment
         await increment_click(slug)
-
-        # Still writes to DB --> consider async queue later
-        #await repo.increment_click_count(slug)
-
-        await track_click_event(
-        slug=slug,
-        ip=ip,
-        user_agent=request.headers.get("user-agent"),
-    )
-
+        await track_click_event(slug=slug, ip=ip, user_agent=user_agent)
 
         return RedirectResponse(url=cached_url, status_code=307)
 
-    # ── 3. DB lookup ────────────────────────────────────────
+    # ── 3. DB lookup ──────────────────────────────────────────────────────
+    repo = LinkRepository(db)
     link = await repo.get_by_slug(slug)
 
     if not link:
         logger.warning("slug_not_found", extra={"slug": slug})
         raise HTTPException(status_code=404, detail="Link not found")
 
-    # Check if link has expired
+    # ── 4. Expiry check ───────────────────────────────────────────────────
     if link.expires_at and link.expires_at < datetime.now(timezone.utc):
         raise HTTPException(status_code=410, detail="Link expired")
 
-    # ── 4. Analytics & tracking ─────────────────────────────────────────
-    await repo.increment_click_count(slug)
+    # ── 5. Analytics — same Redis buffer as cache-hit path ────────────────
+    await increment_click(slug)
+    await track_click_event(slug=slug, ip=ip, user_agent=user_agent)
 
-    await click_repo.create_event(
-        link_id=link.id,
-        ip_address=ip,
-        user_agent=request.headers.get("user-agent"),
-    )
-
-    # ── 5. Populate cache ───────────────────────────────────────────────
+    # ── 6. Populate cache for future requests ─────────────────────────────
     if not link.expires_at or link.expires_at > datetime.now(timezone.utc):
         await set_url(slug, link.url)
 

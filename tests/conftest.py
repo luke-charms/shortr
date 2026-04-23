@@ -6,12 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from unittest.mock import AsyncMock
 from app.core.redis import get_redis, close_redis
 
-
 from app.db.base import Base
 from app.main import app
 from app.api.deps import get_db
 
 DATABASE_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/shortr"
+
 
 @pytest.fixture(scope="session")
 def event_loop():
@@ -39,9 +39,13 @@ async def session_factory(engine):
 
 @pytest_asyncio.fixture
 async def db_session(session_factory):
+    # Bug 4 fix: wrap in begin() so flush() calls have a transaction to land in.
+    # rollback() at the end discards all test data, keeping tests isolated.
     async with session_factory() as session:
-        yield session
-        await session.rollback()
+        async with session.begin():
+            yield session
+            await session.rollback()
+
 
 @pytest_asyncio.fixture
 async def client(db_session: AsyncSession):
@@ -58,18 +62,24 @@ async def client(db_session: AsyncSession):
 
     app.dependency_overrides.clear()
 
+
 @pytest_asyncio.fixture
 async def redis_client():
     """
     Returns the real Redis client connected to the test container.
-    Cleans up keys after the test to ensure isolation.
+    Cleans up all keys after the test to ensure isolation.
     """
     client = get_redis()
     yield client
-    # Clean up the test data
     await client.flushdb()
+
 
 @pytest.fixture(autouse=True)
 def mock_cache(monkeypatch):
+    # Bug 5 fix: also patch is_rate_limited, increment_click, and
+    # track_click_event so tests never try to reach Redis via those paths.
     monkeypatch.setattr("app.api.v1.redirects.get_url", AsyncMock(return_value=None))
     monkeypatch.setattr("app.api.v1.redirects.set_url", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.api.v1.redirects.is_rate_limited", AsyncMock(return_value=False))
+    monkeypatch.setattr("app.api.v1.redirects.increment_click", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.api.v1.redirects.track_click_event", AsyncMock(return_value=None))
