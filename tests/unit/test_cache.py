@@ -81,3 +81,40 @@ async def test_cache_ttl_expires_integration(redis_client):
     # 4. Verify it has expired and returned None
     val_after = await get_url(test_slug)
     assert val_after is None
+
+@pytest.mark.asyncio
+async def test_rate_limited_request_returns_429(client, monkeypatch):
+    monkeypatch.setattr(
+        "app.api.v1.redirects.is_rate_limited",
+        AsyncMock(return_value=True),
+    )
+
+    response = await client.get("/anything")
+
+    assert response.status_code == 429
+
+@pytest.mark.asyncio
+async def test_create_link_retry_exhaustion(client, monkeypatch):
+    from sqlalchemy.exc import IntegrityError
+
+    # Force slug generator to always collide
+    monkeypatch.setattr(
+        "app.api.v1.links.generate_slug",
+        lambda: "same_slug"
+    )
+
+    async def always_fail(*args, **kwargs):
+        raise IntegrityError("mock", None, None)
+
+    monkeypatch.setattr(
+        "app.repositories.link_repo.LinkRepository.create",
+        always_fail
+    )
+
+    response = await client.post(
+        "/api/v1/links",
+        json={"url": "https://example.com"}
+    )
+
+    assert response.status_code == 500
+    assert "max retries" in response.json()["detail"]
