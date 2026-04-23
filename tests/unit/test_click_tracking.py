@@ -55,7 +55,13 @@ async def test_create_link_hits_retry(mock_create, client):
         IntegrityError("", "", ""),
         IntegrityError("", "", ""),
         # Final attempt succeeds
-        type("MockLink", (), {"url": "https://example.com", "slug": "ok123"})()
+        type("MockLink", (), {
+        "id": 1,
+        "url": "https://example.com", 
+        "slug": "ok123",
+        "click_count": 0,
+        "expires_at": None
+    })()
     ]
 
     response = await client.post(

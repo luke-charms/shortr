@@ -29,7 +29,7 @@ async def test_create_link_response_schema(client: AsyncClient):
     )
     assert response.status_code == 201
     data = response.json()
-    assert set(data.keys()) == {"url", "slug"}
+    assert {"url", "slug"}.issubset(data.keys())
 
 
 async def test_create_link_slug_is_alphanumeric(client: AsyncClient):

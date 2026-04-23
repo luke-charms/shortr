@@ -8,13 +8,13 @@ class LinkRepository:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create(self, url: str, slug: str) -> Link:
+    async def create(self, url: str, slug: str, expires_at=None) -> Link:
         """
         Insert a new Link row and flush to the DB within the current
         transaction. The caller owns commit/rollback.
         Raises IntegrityError on slug collision (unique constraint).
         """
-        link = Link(url=url, slug=slug)
+        link = Link(url=url, slug=slug, expires_at=expires_at)
         self.db.add(link)
         await self.db.flush()
         return link

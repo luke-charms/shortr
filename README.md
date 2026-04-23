@@ -5,6 +5,3 @@
 todo:
 - integrate with AWS
 - create simple frontend
-
-
-- expired link !!!

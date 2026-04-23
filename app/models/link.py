@@ -10,4 +10,4 @@ class Link(Base):
     url: Mapped[str] = mapped_column(String, nullable=False)
     slug: Mapped[str] = mapped_column(String(10), unique=True, index=True, nullable=False)
     click_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

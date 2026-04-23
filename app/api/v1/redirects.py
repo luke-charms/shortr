@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime, timezone
 
 from app.api.deps import get_db
 from app.repositories.link_repo import LinkRepository
@@ -67,6 +68,10 @@ async def redirect(
         logger.warning("slug_not_found", extra={"slug": slug})
         raise HTTPException(status_code=404, detail="Link not found")
 
+    # Check if link has expired
+    if link.expires_at and link.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=410, detail="Link expired")
+
     # ── 4. Analytics & tracking ─────────────────────────────────────────
     await repo.increment_click_count(slug)
 
@@ -77,7 +82,8 @@ async def redirect(
     )
 
     # ── 5. Populate cache ───────────────────────────────────────────────
-    await set_url(slug, link.url)
+    if not link.expires_at or link.expires_at > datetime.now(timezone.utc):
+        await set_url(slug, link.url)
 
     logger.info("cache_miss_populated", extra={"slug": slug})
 
