@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
@@ -7,13 +8,33 @@ from app.api.v1.redirects import router as redirect_router
 from app.middleware.timing import TimingMiddleware
 from app.core.redis import close_redis
 
+# Module-level imports so patch("app.main.flush_click_counts") works in tests
+from app.workers.analytics_worker import (
+    worker_loop,
+    flush_click_counts,
+    flush_click_events,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # startup: nothing to do — connections are lazy
+    worker_task = asyncio.create_task(worker_loop())
+
     yield
-    # shutdown: gracefully close the Redis connection pool
+
+    worker_task.cancel()
+    try:
+        await worker_task
+    except asyncio.CancelledError:
+        pass
+
+    # Final drain — best-effort, must not prevent Redis from closing
+    try:
+        await flush_click_counts()
+        await flush_click_events()
+    except Exception:
+        pass
+
     await close_redis()
 
 

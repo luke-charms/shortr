@@ -21,10 +21,12 @@ async def create_link(
     for attempt in range(MAX_RETRIES):
         slug = generate_slug()
         try:
-            # begin_nested() creates a SAVEPOINT so that an IntegrityError
-            # on slug collision only rolls back to here, not the whole tx.
             async with db.begin_nested():
-                link = await repo.create(url=str(payload.url), slug=slug, expires_at=payload.expires_at)
+                link = await repo.create(
+                    url=str(payload.url),
+                    slug=slug,
+                    expires_at=payload.expires_at,
+                )
             return link
         except IntegrityError:
             if attempt == MAX_RETRIES - 1:
@@ -32,5 +34,3 @@ async def create_link(
                     status_code=500,
                     detail="Could not generate unique slug after max retries",
                 )
-
-    raise HTTPException(status_code=500, detail="Unexpected error")

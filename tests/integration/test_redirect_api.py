@@ -1,7 +1,6 @@
 from httpx import AsyncClient
 from unittest.mock import AsyncMock
 
-
 async def test_redirect_existing_link(client: AsyncClient) -> None:
     """DB miss path: slug not in cache, found in DB, returns 307."""
     create_resp = await client.post(
