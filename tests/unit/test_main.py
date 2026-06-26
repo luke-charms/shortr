@@ -12,7 +12,7 @@ def test_create_app_returns_fastapi_instance():
 def test_create_app_registers_all_routers():
     from app.main import create_app
     app = create_app()
-    routes = [r.path for r in app.routes]
+    routes = [r.path for r in app.routes if hasattr(r, "path")]
     assert "/healthz" in routes
     assert "/api/v1/links" in routes
     assert "/{slug}" in routes
