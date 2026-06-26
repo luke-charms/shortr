@@ -7,6 +7,7 @@ dependencies = [
     "pydantic",
     "sqlalchemy>=2.0",
     "asyncpg",
+    "greenlet",
     "alembic",
     "redis>=5.0"
 ]
