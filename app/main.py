@@ -1,3 +1,6 @@
+import sys
+sys.dont_write_bytecode = True
+
 import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
